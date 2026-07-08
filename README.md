@@ -15,9 +15,12 @@ make up
 
 ### 自動バックアップ
 
-[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc` でダンプし、GitHub Actionsのartifactとしてアップロードする(保持期間30日)。手動実行(`workflow_dispatch`)も可能。
+[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc`(圧縮済み)でダンプし、以下2箇所へアップロードする。手動実行(`workflow_dispatch`)も可能。
 
-サーバー本体が壊れてもartifactは別途GitHub側に保存されるため、サーバー外バックアップとして機能する。ただし30日を過ぎると自動的に失われるため、長期保管が必要な場合は別途ダウンロードして保管すること。
+1. **GitHub Actions artifact**(保持期間30日、過ぎると自動削除)
+2. **Google Drive**(サービスアカウント経由で個人のDriveの共有フォルダへアップロード。期限なしだが、世代管理・自動削除は無いため増え続ける点に注意)
+
+サーバー本体が壊れても上記いずれかにバックアップが残るため、サーバー外バックアップとして機能する。
 
 ### 手動バックアップ
 

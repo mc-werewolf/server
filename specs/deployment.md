@@ -147,8 +147,14 @@
 ## サーバー外バックアップ
 
 - ワークフロー: [`.github/workflows/backup.yml`](../.github/workflows/backup.yml)
-- 毎日(19:00 UTC = 04:00 JST)+ 手動実行(`workflow_dispatch`)で、prod環境のPostgreSQLを `pg_dump -Fc` でダンプし、GitHub Actionsのartifactとしてアップロードする(保持期間30日)
-- サーバー自体が失われても、GitHub側にartifactとしてバックアップが残る(ただし30日の期限つき。長期保存が必要なら別途外部ストレージへの転送を検討)
+- 毎日(19:00 UTC = 04:00 JST)+ 手動実行(`workflow_dispatch`)で、prod環境のPostgreSQLを `pg_dump -Fc`(custom format。デフォルトでzlib圧縮される。実測で非圧縮の約1/19のサイズになることを確認済み)でダンプする
+- 保存先は2箇所(冗長化):
+  1. **GitHub Actions artifact**(保持期間30日)
+  2. **Google Drive**(個人のDriveに作成したフォルダへ、サービスアカウント経由でアップロード。期限なし)
+     - GitHub Actionsのランナー上で `rclone` をインストールし、`~/.config/rclone/rclone.conf` に `service_account_file` + `root_folder_id` を直接書き込んで設定(`rclone config create` の対話継続を避けるため)
+     - サービスアカウントは対象フォルダに「編集者」として共有されている前提。アップロードされたファイルはフォルダ所有者(個人アカウント)の容量を消費する
+     - 必要なSecrets: `GDRIVE_SA_KEY`(サービスアカウントのJSON鍵)、`GDRIVE_FOLDER_ID`(共有フォルダのID)
+- サーバー自体が失われても、上記いずれかにバックアップが残る
 - 手動でのバックアップ取得・復元手順は [`README.md`](../README.md) に記載。実際に本番相当のダンプを取得し、別のPostgreSQLコンテナへ `pg_restore` で復元できることを確認済み
 - devのバックアップは現状対象外(必要になれば同様の仕組みを追加)
 
@@ -165,5 +171,5 @@
 - `mc-werewolf.com/admin` の実体(Next.js内の管理画面ルートか、別アプリか)、Basic認証に加えたアプリ側認証の要否
 - `/opt/werewolf` ディレクトリ・Dockerのインストールなど、サーバー初期セットアップの具体的な手順の文書化(実施はしたが、手順書としては未整理)
 - redeploy時のゼロダウンタイム化(現状はbackend/frontend入れ替え時に数秒〜数十秒の502が発生しうる)
-- バックアップの長期保存(現状はGitHub Actions artifactの30日保持のみ。より長期保存が必要な場合は外部ストレージへの転送を検討)
+- Google Driveに溜まり続けるバックアップの世代管理・自動削除(現状は増え続ける一方)
 - devデータベースのバックアップ(現状prodのみ)
