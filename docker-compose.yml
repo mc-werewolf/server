@@ -16,7 +16,11 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       PORT: "8000"
-      DATABASE_URL: postgres://${POSTGRES_USER:-werewolf}:${POSTGRES_PASSWORD:-werewolf}@postgres:5432/${POSTGRES_DB:-werewolf}?sslmode=disable
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-werewolf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-werewolf}
+      POSTGRES_DB: ${POSTGRES_DB:-werewolf}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

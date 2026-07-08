@@ -26,7 +26,13 @@ func main() {
 		port = "8000"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL := db.BuildURL(
+		getEnv("POSTGRES_HOST", "postgres"),
+		getEnv("POSTGRES_PORT", "5432"),
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_DB"),
+	)
 
 	if err := migrate.Up(databaseURL); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
@@ -44,4 +50,11 @@ func main() {
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
