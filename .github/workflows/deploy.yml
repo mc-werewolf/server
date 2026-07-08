@@ -100,7 +100,7 @@ jobs:
             EOF
             cd "$DIR"
             docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env pull
-            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env up -d
+            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env up -d --wait --wait-timeout 90
 
   deploy-caddy:
     needs: deploy
@@ -142,4 +142,4 @@ jobs:
             EOF
             cd "$DIR"
             docker compose -p ww-caddy --env-file .env pull
-            docker compose -p ww-caddy --env-file .env up -d
+            docker compose -p ww-caddy --env-file .env up -d --wait --wait-timeout 60

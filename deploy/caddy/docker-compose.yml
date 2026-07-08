@@ -17,6 +17,12 @@ services:
       - ww-dev
       - ww-prod
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 # ww-dev / ww-prod are the default networks created by the per-environment
 # app stacks (docker compose -p ww-dev / -p ww-prod). Caddy joins both so it

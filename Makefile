@@ -4,7 +4,7 @@ DATABASE_URL ?= postgres://werewolf:werewolf@localhost:5432/werewolf?sslmode=dis
 .PHONY: up down build logs ps restart clean migrate-create migrate-up migrate-down
 
 up:
-	docker compose up -d --build
+	docker compose up -d --build --wait --wait-timeout 60
 
 down:
 	docker compose down

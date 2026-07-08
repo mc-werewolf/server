@@ -45,11 +45,12 @@
    - イメージタグ: `main` へのpush時は `dev`、`v*.*.*` タグ作成時はそのタグ名(例 `v1.0.0`)をそのままタグとして使用
 2. **deploy ジョブ**(`needs: build-and-push`)
    - デプロイ専用の [`deploy/docker-compose.yml`](../deploy/docker-compose.yml)(`build:` ではなく `image:` 参照。ローカル開発用のルート `docker-compose.yml` とは別ファイル)を SCP でサーバー上の `/opt/werewolf/<env>/` に配置
-   - SSH接続し、環境ごとの `.env`(ポート・DB認証情報・イメージタグ等)をSecretsから生成した上で、`docker compose -p ww-<env> --env-file .env pull && up -d` を実行
+   - SSH接続し、環境ごとの `.env`(ポート・DB認証情報・イメージタグ等)をSecretsから生成した上で、`docker compose -p ww-<env> --env-file .env pull && up -d --wait --wait-timeout 90` を実行
    - `<env>` は `dev` / `prod`。docker composeの **project名を分ける**ことで、コンテナ・ネットワーク・named volume(DBデータ含む)を完全に分離する
+   - `--wait` は各サービスの healthcheck が通るまでジョブを待たせ、タイムアウト・失敗時は非ゼロ終了でジョブごと失敗させる(後述「堅牢性」参照)
 3. **deploy-caddy ジョブ**(`needs: deploy`)
    - [`deploy/caddy/docker-compose.yml`](../deploy/caddy/docker-compose.yml) / [`Caddyfile`](../deploy/caddy/Caddyfile) を SCP でサーバー上の `/opt/werewolf/caddy/` に配置
-   - SSH接続し、Basic認証用の `.env` をSecretsから生成した上で、`docker compose -p ww-caddy --env-file .env pull && up -d` を実行
+   - SSH接続し、Basic認証用の `.env` をSecretsから生成した上で、`docker compose -p ww-caddy --env-file .env pull && up -d --wait --wait-timeout 60` を実行
    - dev/prodどちらのpushでも毎回実行される(Caddyは環境共有のため)。前述の通り、初回はdev/prod両方のデプロイが完了済みである必要がある
 
 ### 必要なGitHub Secrets
@@ -113,7 +114,43 @@
 - マイグレーションファイルは `backend/internal/migrate/migrations/` にSQLとして配置し、`go:embed` でbackendバイナリに埋め込む
 - backend起動時に自動で未適用のマイグレーションを適用する(`migrate.Up()`)。Postgresのadvisory lockを使うため多重起動時も安全
   - これにより、dev/prodいずれもデプロイ(コンテナ起動)のたびに自動でスキーマが最新化される。GitHub Actions側で別途マイグレーション用のステップは不要
+  - マイグレーション(または接続)に失敗すると `log.Fatalf` でbackendプロセスごと終了する。この失敗はdocker composeのhealthcheckで検知され、デプロイジョブ自体を失敗させる(後述「堅牢性」参照)。**「毎回安全に実行できるか」は idempotent + advisory lock で担保、「失敗時に前進しないか」は healthcheck + `--wait` で担保**、という2段構え
+  - DB接続文字列(`postgres://user:password@host/db`)はbackend内で `net/url.UserPassword` を使い安全に組み立てている(単純な文字列結合だと、生成されたパスワードに `^` `%` `|` 等の記号が含まれた場合にURLとして壊れ、backendが起動時に無限に再起動し続けるバグを実際に踏んだため)
 - ローカルでのマイグレーションファイル作成・手動適用/ロールバックは `Makefile` の `migrate-create` / `migrate-up` / `migrate-down` を使う(公式 `migrate/migrate` Dockerイメージ経由。ローカルにmigrate CLIのインストールは不要)
+
+## 堅牢性
+
+### デプロイ失敗の検知(fail-fast)
+
+以前は `docker compose up -d` を実行するだけで、コンテナが起動直後にクラッシュしていてもデプロイジョブは「成功」と表示されていた(実際にbackendのDB接続文字列が壊れて再起動ループしていたのに気づかなかった実例がある)。これを防ぐため:
+
+- `postgres` / `backend` / `frontend` / `caddy` それぞれに `healthcheck` を定義(`deploy/docker-compose.yml`, `deploy/caddy/docker-compose.yml`, ローカル用 `docker-compose.yml` 共通)
+  - `postgres`: `pg_isready`
+  - `backend`: `GET /api/health` へのwget
+  - `frontend`: `GET /` へのwget
+  - `caddy`: admin API(`:2019/config/`)へのwget
+  - **healthcheckのURLは `127.0.0.1` を使うこと**(`localhost` はIPv6の `::1` に解決されることがあり、Next.jsの `HOSTNAME=0.0.0.0` はIPv4のみのbindのため `localhost` だと接続拒否になる不具合を実際に踏んだ)
+- `backend`/`frontend` の `depends_on` は `condition: service_healthy` を使い、前段が本当に健康になってから次を起動する
+- デプロイスクリプト側は `docker compose ... up -d --wait --wait-timeout <N>` を使う。`--wait` は全サービスがhealthyになるまで待ち、タイムアウトまたはコンテナが終了した場合は非ゼロ終了する。これによりGitHub Actionsのジョブ自体が失敗として報告される
+- ローカルの `make up` も同様に `--wait` 付き(`Makefile`参照)。実際に不正なDBパスワードを与えて `up -d --wait` がexit code 1で失敗することを確認済み
+
+### データ永続化・分離(確認済み)
+
+- PostgreSQLデータは named volume(`ww-dev_postgres_data` / `ww-prod_postgres_data`)に保存され、`docker compose ... up -d` の再実行(redeploy)では消えない(volumeを明示的に消すのは `down -v` のみ。デプロイスクリプトはこれを使わない)
+- dev/prodは volume名・コンテナ名・ネットワークすべてが `ww-dev` / `ww-prod` のcompose project名で分離されており、データが混ざることはない
+- Caddyの証明書データ(`caddy_data:/data`, `caddy_config:/config`)も同様にnamed volumeで永続化されており、実際に発行された `mc-werewolf.com` / `dev.mc-werewolf.com` のLet's Encrypt証明書が保存されていることを確認済み
+
+### 既知の制約: redeploy時の瞬断
+
+`backend`/`frontend` イメージが変わるredeployでは、docker composeが古いコンテナを停止・削除してから新しいコンテナを起動するため、その間の数秒〜数十秒、Caddyから見て `dev-backend` 等の名前解決が一時的にできなくなる瞬間がある(実際に発生を確認)。現状はこの間502が返るのみで実害は小さいが、ゼロダウンタイムデプロイ(blue/green等)は未実装。
+
+## サーバー外バックアップ
+
+- ワークフロー: [`.github/workflows/backup.yml`](../.github/workflows/backup.yml)
+- 毎日(19:00 UTC = 04:00 JST)+ 手動実行(`workflow_dispatch`)で、prod環境のPostgreSQLを `pg_dump -Fc` でダンプし、GitHub Actionsのartifactとしてアップロードする(保持期間30日)
+- サーバー自体が失われても、GitHub側にartifactとしてバックアップが残る(ただし30日の期限つき。長期保存が必要なら別途外部ストレージへの転送を検討)
+- 手動でのバックアップ取得・復元手順は [`README.md`](../README.md) に記載。実際に本番相当のダンプを取得し、別のPostgreSQLコンテナへ `pg_restore` で復元できることを確認済み
+- devのバックアップは現状対象外(必要になれば同様の仕組みを追加)
 
 ## ローカル開発
 
@@ -124,7 +161,9 @@
 ## 未確定事項 / TODO
 
 - CIでのテスト実行(現状のワークフローはビルド・デプロイのみで、テストステップは未追加)
-- Caddyの自動HTTPS用データ(証明書等、`caddy_data` named volume)のバックアップ方法
+- Caddyの証明書データ(`caddy_data`)自体のバックアップ(現状は未バックアップ。失っても再発行は自動で行われるため優先度は低い)
 - `mc-werewolf.com/admin` の実体(Next.js内の管理画面ルートか、別アプリか)、Basic認証に加えたアプリ側認証の要否
-- `/opt/werewolf` ディレクトリ・Dockerのインストールなど、サーバー初期セットアップの具体的な手順(現状はSSHでの一度きりの手動作業を想定)
-- 実サーバー・実ドメインでのエンドツーエンド動作確認(ローカルではCaddyfileの構文・コンテナ間到達性までは確認済みだが、実DNS環境でのTLS証明書取得は未検証)
+- `/opt/werewolf` ディレクトリ・Dockerのインストールなど、サーバー初期セットアップの具体的な手順の文書化(実施はしたが、手順書としては未整理)
+- redeploy時のゼロダウンタイム化(現状はbackend/frontend入れ替え時に数秒〜数十秒の502が発生しうる)
+- バックアップの長期保存(現状はGitHub Actions artifactの30日保持のみ。より長期保存が必要な場合は外部ストレージへの転送を検討)
+- devデータベースのバックアップ(現状prodのみ)
