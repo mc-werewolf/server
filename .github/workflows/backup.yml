@@ -44,4 +44,4 @@ jobs:
           curl -fsSL https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
           printf '%s\n' "$RCLONE_CONFIG_TEXT" > ~/.config/rclone/rclone.conf
-          rclone copy "$FILENAME" gdrive:werewolf-backups --progress
+          rclone copy "$FILENAME" gdrive:minecraft/werewolf/server/backups --progress
