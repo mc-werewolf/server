@@ -153,8 +153,9 @@
   2. **Google Drive**(個人のDriveに作成したフォルダへアップロード。期限なし)
      - GitHub Actionsのランナー上で `rclone` をインストールし、`~/.config/rclone/rclone.conf` を直接書き込んで設定
      - **認証方式はOAuth(本人のGoogleアカウントで認可した refresh token を含む rclone設定)を使う**。サービスアカウント方式は一度試したが、Googleの仕様上サービスアカウントは自前のストレージ容量を持たず、個人のDrive(共有フォルダ経由でも)へは `storageQuotaExceeded` で書き込めないため不採用とした
-     - OAuthのセットアップ(Google Cloud上でのOAuthクライアントID作成 → ローカルで `rclone config` により認可 → 生成された `[gdrive]` 設定ブロックをそのままSecretへ)は人手による一度きりの作業が必要
-     - 必要なSecrets: `GDRIVE_RCLONE_CONF`(`rclone config show gdrive` の出力全体。client_id/client_secret/refresh tokenおよび`root_folder_id`を含む)
+     - OAuthのセットアップ(Google Cloud上でのOAuthクライアントID作成 → ローカルで `rclone config` により認可 → 生成された `rclone.conf` の中身をそのままSecretへ)は人手による一度きりの作業が必要
+     - 必要なSecrets: `RCLONE_CONFIG`(`~/.config/rclone/rclone.conf` の中身全体。client_id/client_secret/refresh tokenを含む)
+     - アップロード先は `gdrive:werewolf-backups`(Google Driveのマイドライブ直下に `werewolf-backups` フォルダを作りその中に保存。フォルダIDでの指定はしない方針)
 - サーバー自体が失われても、上記いずれかにバックアップが残る
 - 手動でのバックアップ取得・復元手順は [`README.md`](../README.md) に記載。実際に本番相当のダンプを取得し、別のPostgreSQLコンテナへ `pg_restore` で復元できることを確認済み
 - devのバックアップは現状対象外(必要になれば同様の仕組みを追加)
