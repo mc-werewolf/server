@@ -1,0 +1,145 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine image tag
+        id: vars
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mc-werewolf-backend:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mc-werewolf-frontend:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_ENV_NAME: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
+      IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      APP_ENV: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
+      BACKEND_PORT: ${{ github.ref_type == 'tag' && '8000' || '8080' }}
+      FRONTEND_PORT: ${{ github.ref_type == 'tag' && '3000' || '3001' }}
+      POSTGRES_PORT: ${{ github.ref_type == 'tag' && '5432' || '5433' }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      POSTGRES_USER: werewolf
+      POSTGRES_DB: werewolf
+      POSTGRES_PASSWORD: ${{ github.ref_type == 'tag' && secrets.PROD_POSTGRES_PASSWORD || secrets.DEV_POSTGRES_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy deploy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "deploy/docker-compose.yml"
+          target: "/opt/werewolf/${{ env.DEPLOY_ENV_NAME }}"
+          strip_components: 1
+
+      - name: Write env file and (re)deploy stack
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: DEPLOY_ENV_NAME,IMAGE_TAG,APP_ENV,BACKEND_PORT,FRONTEND_PORT,POSTGRES_PORT,DOCKERHUB_USERNAME,POSTGRES_USER,POSTGRES_DB,POSTGRES_PASSWORD
+          script: |
+            set -eu
+            DIR="/opt/werewolf/$DEPLOY_ENV_NAME"
+            mkdir -p "$DIR"
+            cat > "$DIR/.env" <<EOF
+            DEPLOY_ENV_NAME=$DEPLOY_ENV_NAME
+            DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME
+            IMAGE_TAG=$IMAGE_TAG
+            APP_ENV=$APP_ENV
+            BACKEND_PORT=$BACKEND_PORT
+            FRONTEND_PORT=$FRONTEND_PORT
+            POSTGRES_PORT=$POSTGRES_PORT
+            POSTGRES_USER=$POSTGRES_USER
+            POSTGRES_DB=$POSTGRES_DB
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            EOF
+            cd "$DIR"
+            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env pull
+            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env up -d
+
+  deploy-caddy:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      BASIC_AUTH_DEV_USER: ${{ secrets.BASIC_AUTH_DEV_USER }}
+      BASIC_AUTH_DEV_HASH: ${{ secrets.BASIC_AUTH_DEV_HASH }}
+      BASIC_AUTH_ADMIN_USER: ${{ secrets.BASIC_AUTH_ADMIN_USER }}
+      BASIC_AUTH_ADMIN_HASH: ${{ secrets.BASIC_AUTH_ADMIN_HASH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy Caddy config to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "deploy/caddy/docker-compose.yml,deploy/caddy/Caddyfile"
+          target: "/opt/werewolf/caddy"
+          strip_components: 2
+
+      - name: Write env file and (re)deploy Caddy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: BASIC_AUTH_DEV_USER,BASIC_AUTH_DEV_HASH,BASIC_AUTH_ADMIN_USER,BASIC_AUTH_ADMIN_HASH
+          script: |
+            set -eu
+            DIR="/opt/werewolf/caddy"
+            mkdir -p "$DIR"
+            cat > "$DIR/.env" <<EOF
+            BASIC_AUTH_DEV_USER=$BASIC_AUTH_DEV_USER
+            BASIC_AUTH_DEV_HASH=$BASIC_AUTH_DEV_HASH
+            BASIC_AUTH_ADMIN_USER=$BASIC_AUTH_ADMIN_USER
+            BASIC_AUTH_ADMIN_HASH=$BASIC_AUTH_ADMIN_HASH
+            EOF
+            cd "$DIR"
+            docker compose -p ww-caddy --env-file .env pull
+            docker compose -p ww-caddy --env-file .env up -d

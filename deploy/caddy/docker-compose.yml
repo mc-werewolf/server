@@ -1,0 +1,35 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BASIC_AUTH_DEV_USER: ${BASIC_AUTH_DEV_USER}
+      BASIC_AUTH_DEV_HASH: ${BASIC_AUTH_DEV_HASH}
+      BASIC_AUTH_ADMIN_USER: ${BASIC_AUTH_ADMIN_USER}
+      BASIC_AUTH_ADMIN_HASH: ${BASIC_AUTH_ADMIN_HASH}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ww-dev
+      - ww-prod
+    restart: unless-stopped
+
+# ww-dev / ww-prod are the default networks created by the per-environment
+# app stacks (docker compose -p ww-dev / -p ww-prod). Caddy joins both so it
+# can reverse_proxy to dev-backend/dev-frontend and prod-backend/prod-frontend
+# by their explicit container_name across environments.
+networks:
+  ww-dev:
+    external: true
+    name: ww-dev_default
+  ww-prod:
+    external: true
+    name: ww-prod_default
+
+volumes:
+  caddy_data:
+  caddy_config:

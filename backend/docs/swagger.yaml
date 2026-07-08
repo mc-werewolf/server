@@ -1,0 +1,51 @@
+basePath: /api
+definitions:
+  api.dbHealthResponse:
+    properties:
+      database:
+        type: string
+      status:
+        type: string
+    type: object
+  api.healthResponse:
+    properties:
+      status:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: マイクラ人狼 専用バックエンドAPI
+  title: Werewolf Server API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: APIサーバーの生存確認用エンドポイント
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.healthResponse'
+      summary: ヘルスチェック
+      tags:
+      - health
+  /health/db:
+    get:
+      description: PostgreSQLへの接続確認用エンドポイント
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.dbHealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.dbHealthResponse'
+      summary: DB疎通確認
+      tags:
+      - health
+swagger: "2.0"

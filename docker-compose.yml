@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-werewolf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-werewolf}
+      POSTGRES_DB: ${POSTGRES_DB:-werewolf}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      PORT: "8000"
+      DATABASE_URL: postgres://${POSTGRES_USER:-werewolf}:${POSTGRES_PASSWORD:-werewolf}@postgres:5432/${POSTGRES_DB:-werewolf}?sslmode=disable
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

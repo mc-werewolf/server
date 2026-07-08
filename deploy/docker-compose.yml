@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    image: ${DOCKERHUB_USERNAME}/mc-werewolf-backend:${IMAGE_TAG}
+    container_name: ${DEPLOY_ENV_NAME}-backend
+    environment:
+      APP_ENV: ${APP_ENV}
+      PORT: "8000"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - "${BACKEND_PORT}:8000"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/mc-werewolf-frontend:${IMAGE_TAG}
+    container_name: ${DEPLOY_ENV_NAME}-frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
