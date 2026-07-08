@@ -150,10 +150,11 @@
 - 毎日(19:00 UTC = 04:00 JST)+ 手動実行(`workflow_dispatch`)で、prod環境のPostgreSQLを `pg_dump -Fc`(custom format。デフォルトでzlib圧縮される。実測で非圧縮の約1/19のサイズになることを確認済み)でダンプする
 - 保存先は2箇所(冗長化):
   1. **GitHub Actions artifact**(保持期間30日)
-  2. **Google Drive**(個人のDriveに作成したフォルダへ、サービスアカウント経由でアップロード。期限なし)
-     - GitHub Actionsのランナー上で `rclone` をインストールし、`~/.config/rclone/rclone.conf` に `service_account_file` + `root_folder_id` を直接書き込んで設定(`rclone config create` の対話継続を避けるため)
-     - サービスアカウントは対象フォルダに「編集者」として共有されている前提。アップロードされたファイルはフォルダ所有者(個人アカウント)の容量を消費する
-     - 必要なSecrets: `GDRIVE_SA_KEY`(サービスアカウントのJSON鍵)、`GDRIVE_FOLDER_ID`(共有フォルダのID)
+  2. **Google Drive**(個人のDriveに作成したフォルダへアップロード。期限なし)
+     - GitHub Actionsのランナー上で `rclone` をインストールし、`~/.config/rclone/rclone.conf` を直接書き込んで設定
+     - **認証方式はOAuth(本人のGoogleアカウントで認可した refresh token を含む rclone設定)を使う**。サービスアカウント方式は一度試したが、Googleの仕様上サービスアカウントは自前のストレージ容量を持たず、個人のDrive(共有フォルダ経由でも)へは `storageQuotaExceeded` で書き込めないため不採用とした
+     - OAuthのセットアップ(Google Cloud上でのOAuthクライアントID作成 → ローカルで `rclone config` により認可 → 生成された `[gdrive]` 設定ブロックをそのままSecretへ)は人手による一度きりの作業が必要
+     - 必要なSecrets: `GDRIVE_RCLONE_CONF`(`rclone config show gdrive` の出力全体。client_id/client_secret/refresh tokenおよび`root_folder_id`を含む)
 - サーバー自体が失われても、上記いずれかにバックアップが残る
 - 手動でのバックアップ取得・復元手順は [`README.md`](../README.md) に記載。実際に本番相当のダンプを取得し、別のPostgreSQLコンテナへ `pg_restore` で復元できることを確認済み
 - devのバックアップは現状対象外(必要になれば同様の仕組みを追加)

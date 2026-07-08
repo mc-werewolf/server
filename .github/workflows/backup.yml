@@ -38,18 +38,10 @@ jobs:
 
       - name: Upload backup to Google Drive
         env:
-          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
-          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          GDRIVE_RCLONE_CONF: ${{ secrets.GDRIVE_RCLONE_CONF }}
         run: |
           set -eu
           curl -fsSL https://rclone.org/install.sh | sudo bash
-          printf '%s' "$GDRIVE_SA_KEY" > /tmp/gdrive-sa.json
           mkdir -p ~/.config/rclone
-          cat > ~/.config/rclone/rclone.conf <<EOF
-          [gdrive]
-          type = drive
-          service_account_file = /tmp/gdrive-sa.json
-          root_folder_id = $GDRIVE_FOLDER_ID
-          EOF
+          printf '%s\n' "$GDRIVE_RCLONE_CONF" > ~/.config/rclone/rclone.conf
           rclone copy "$FILENAME" gdrive: --progress
-          rm -f /tmp/gdrive-sa.json
