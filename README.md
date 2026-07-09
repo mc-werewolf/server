@@ -15,10 +15,10 @@ make up
 
 ### 自動バックアップ
 
-[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc`(圧縮済み)でダンプし、以下2箇所へアップロードする。手動実行(`workflow_dispatch`)も可能。tag push による prod デプロイ前にも、同じ保存先へ `werewolf-prod-before-deploy-*` として自動バックアップする。
+[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc`(圧縮済み)でダンプし、以下2箇所へアップロードする。手動実行(`workflow_dispatch`)では dev/prod を選択できる。tag push による prod デプロイ前にも、prod 保存先へ `werewolf-prod-before-deploy-*` として自動バックアップする。
 
 1. **GitHub Actions artifact**(保持期間30日、過ぎると自動削除)
-2. **Google Drive**(OAuthで認可した個人アカウントの `マイドライブ/<GDRIVE_DESTINATION>/` フォルダへアップロード。保存先はリポジトリの `GDRIVE_DESTINATION` Secret で変更できる。期限なしだが、世代管理・自動削除は無いため増え続ける点に注意)
+2. **Google Drive**(OAuthで認可した個人アカウントの `マイドライブ/<PROD_GDRIVE_DESTINATION>/` または `マイドライブ/<DEV_GDRIVE_DESTINATION>/` フォルダへアップロード。期限なしだが、世代管理・自動削除は無いため増え続ける点に注意)
    - サービスアカウントは個人のDriveに書き込めない(`storageQuotaExceeded`)ため、`rclone`のOAuth認可(本人のGoogleアカウントで一度だけ許可し、以後はrefresh tokenで自動更新)を使っている
 
 サーバー本体が壊れても上記いずれかにバックアップが残るため、サーバー外バックアップとして機能する。
