@@ -1,0 +1,39 @@
+dev.mc-werewolf.com {
+	basic_auth {
+		$BASIC_AUTH_DEV_USER $BASIC_AUTH_DEV_HASH
+	}
+
+	handle /api/* {
+		reverse_proxy werewolf-dev-backend:8000
+	}
+
+	handle {
+		reverse_proxy werewolf-dev-frontend:3000
+	}
+}
+
+mc-werewolf.com {
+	handle /admin* {
+		basic_auth {
+			$BASIC_AUTH_ADMIN_USER $BASIC_AUTH_ADMIN_HASH
+		}
+
+		reverse_proxy werewolf-prod-frontend:3000
+	}
+
+	handle /api/admin/* {
+		basic_auth {
+			$BASIC_AUTH_ADMIN_USER $BASIC_AUTH_ADMIN_HASH
+		}
+
+		reverse_proxy werewolf-prod-backend:8000
+	}
+
+	handle /api/* {
+		reverse_proxy werewolf-prod-backend:8000
+	}
+
+	handle {
+		reverse_proxy werewolf-prod-frontend:3000
+	}
+}

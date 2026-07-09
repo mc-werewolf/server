@@ -8,19 +8,26 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: werewolf-deploy-${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   vars:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.vars.outputs.tag }}
+      deploy-env-name: ${{ steps.vars.outputs.deploy-env-name }}
     steps:
-      - name: Determine image tag
+      - name: Determine image tag and deploy environment
         id: vars
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
             echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "deploy-env-name=prod" >> "$GITHUB_OUTPUT"
           else
             echo "tag=dev" >> "$GITHUB_OUTPUT"
+            echo "deploy-env-name=dev" >> "$GITHUB_OUTPUT"
           fi
 
   build-and-push:
@@ -34,98 +41,55 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-  deploy:
+  pre-prod-backup:
     needs: [vars, build-and-push]
-    runs-on: ubuntu-latest
-    env:
-      DEPLOY_ENV_NAME: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
-      IMAGE_TAG: ${{ needs.vars.outputs.tag }}
-      APP_ENV: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
-      BACKEND_PORT: ${{ github.ref_type == 'tag' && '8000' || '8080' }}
-      FRONTEND_PORT: ${{ github.ref_type == 'tag' && '3000' || '3001' }}
-      POSTGRES_PORT: ${{ github.ref_type == 'tag' && '5432' || '5433' }}
+    if: ${{ needs.vars.outputs.deploy-env-name == 'prod' }}
+    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@main
+    with:
+      app-name: werewolf
+      deploy-env-name: prod
+      db-user: werewolf
+      db-name: werewolf
+      backup-prefix: werewolf-prod-before-deploy
+      skip-if-missing: true
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+      GDRIVE_DESTINATION: ${{ secrets.GDRIVE_DESTINATION }}
+
+  deploy:
+    needs: [vars, build-and-push, pre-prod-backup]
+    if: ${{ always() && needs.build-and-push.result == 'success' && (needs.vars.outputs.deploy-env-name != 'prod' || needs.pre-prod-backup.result == 'success') }}
+    uses: kairo-js/github-workflows/.github/workflows/app-deploy.yml@main
+    with:
+      app-name: werewolf
+      image-prefix: mc-werewolf
+      deploy-env-name: ${{ needs.vars.outputs.deploy-env-name }}
+      image-tag: ${{ needs.vars.outputs.tag }}
+      app-env: ${{ needs.vars.outputs.deploy-env-name }}
+      postgres-user: werewolf
+      postgres-db: werewolf
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      POSTGRES_USER: werewolf
-      POSTGRES_DB: werewolf
-      POSTGRES_PASSWORD: ${{ github.ref_type == 'tag' && secrets.PROD_POSTGRES_PASSWORD || secrets.DEV_POSTGRES_PASSWORD }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Copy deploy compose file to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "deploy/docker-compose.yml"
-          target: "/opt/werewolf/${{ env.DEPLOY_ENV_NAME }}"
-          strip_components: 1
-
-      - name: Write env file and (re)deploy stack
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: DEPLOY_ENV_NAME,IMAGE_TAG,APP_ENV,BACKEND_PORT,FRONTEND_PORT,POSTGRES_PORT,DOCKERHUB_USERNAME,POSTGRES_USER,POSTGRES_DB,POSTGRES_PASSWORD
-          script: |
-            set -eu
-            DIR="/opt/werewolf/$DEPLOY_ENV_NAME"
-            mkdir -p "$DIR"
-            cat > "$DIR/.env" <<EOF
-            DEPLOY_ENV_NAME=$DEPLOY_ENV_NAME
-            DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME
-            IMAGE_TAG=$IMAGE_TAG
-            APP_ENV=$APP_ENV
-            BACKEND_PORT=$BACKEND_PORT
-            FRONTEND_PORT=$FRONTEND_PORT
-            POSTGRES_PORT=$POSTGRES_PORT
-            POSTGRES_USER=$POSTGRES_USER
-            POSTGRES_DB=$POSTGRES_DB
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            EOF
-            cd "$DIR"
-            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env pull
-            docker compose -p "ww-$DEPLOY_ENV_NAME" --env-file .env up -d --wait --wait-timeout 90
+      POSTGRES_PASSWORD: ${{ needs.vars.outputs.deploy-env-name == 'prod' && secrets.PROD_POSTGRES_PASSWORD || secrets.DEV_POSTGRES_PASSWORD }}
 
   deploy-caddy:
     needs: deploy
-    runs-on: ubuntu-latest
-    env:
+    uses: kairo-js/github-workflows/.github/workflows/caddy-snippet-deploy.yml@main
+    with:
+      app-name: werewolf
+      snippet-template-path: deploy/caddy/service.caddy
+      acme-email: ${{ vars.ACME_EMAIL }}
+    secrets:
+      PROXY_HOST: ${{ secrets.PROXY_HOST }}
+      PROXY_USER: ${{ secrets.PROXY_USER }}
+      PROXY_SSH_KEY: ${{ secrets.PROXY_SSH_KEY }}
       BASIC_AUTH_DEV_USER: ${{ secrets.BASIC_AUTH_DEV_USER }}
       BASIC_AUTH_DEV_HASH: ${{ secrets.BASIC_AUTH_DEV_HASH }}
       BASIC_AUTH_ADMIN_USER: ${{ secrets.BASIC_AUTH_ADMIN_USER }}
       BASIC_AUTH_ADMIN_HASH: ${{ secrets.BASIC_AUTH_ADMIN_HASH }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Copy Caddy config to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "deploy/caddy/docker-compose.yml,deploy/caddy/Caddyfile"
-          target: "/opt/werewolf/caddy"
-          strip_components: 2
-
-      - name: Write env file and (re)deploy Caddy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: BASIC_AUTH_DEV_USER,BASIC_AUTH_DEV_HASH,BASIC_AUTH_ADMIN_USER,BASIC_AUTH_ADMIN_HASH
-          script: |
-            set -eu
-            DIR="/opt/werewolf/caddy"
-            mkdir -p "$DIR"
-            cat > "$DIR/.env" <<EOF
-            BASIC_AUTH_DEV_USER=$BASIC_AUTH_DEV_USER
-            BASIC_AUTH_DEV_HASH=$BASIC_AUTH_DEV_HASH
-            BASIC_AUTH_ADMIN_USER=$BASIC_AUTH_ADMIN_USER
-            BASIC_AUTH_ADMIN_HASH=$BASIC_AUTH_ADMIN_HASH
-            EOF
-            cd "$DIR"
-            docker compose -p ww-caddy --env-file .env pull
-            docker compose -p ww-caddy --env-file .env up -d --wait --wait-timeout 60

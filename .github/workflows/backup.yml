@@ -8,17 +8,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: werewolf-backup-prod
+  cancel-in-progress: false
+
 jobs:
   backup:
     uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@main
     with:
-      container-name: ww-prod-postgres-1
+      app-name: werewolf
+      deploy-env-name: prod
       db-user: werewolf
       db-name: werewolf
       backup-prefix: werewolf-prod
-      gdrive-destination: minecraft/werewolf/server/backups
     secrets:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+      GDRIVE_DESTINATION: ${{ secrets.GDRIVE_DESTINATION }}
