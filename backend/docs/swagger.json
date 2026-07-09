@@ -8,6 +8,216 @@
     },
     "basePath": "/api",
     "paths": {
+        "/addons": {
+            "get": {
+                "description": "登録済みの全アドオンとそのバージョンを返す(bds-launcher等の公開API)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "addons"
+                ],
+                "summary": "アドオン一覧",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.publicAddonsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/addons/{owner}/{repo}/versions": {
+            "get": {
+                "description": "指定したowner/repoのアドオンについて、既知の全バージョンとproperties.jsから抽出したメタ情報を返す",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "addons"
+                ],
+                "summary": "アドオンのバージョン一覧",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GitHub owner",
+                        "name": "owner",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "GitHub repo",
+                        "name": "repo",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.addonVersionsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/addons/{owner}/{repo}/versions/{tag}/download": {
+            "get": {
+                "description": "指定バージョンのGitHubリリースアセット(.zip)へリダイレクトする。実ファイルはGitHub上のものをそのまま使う",
+                "tags": [
+                    "addons"
+                ],
+                "summary": "アドオンバージョンのダウンロード",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GitHub owner",
+                        "name": "owner",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "GitHub repo",
+                        "name": "repo",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "release tag",
+                        "name": "tag",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/addons": {
+            "get": {
+                "description": "登録済みの全アドオンとそのバージョンを返す",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "登録済みアドオン一覧(管理用)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.adminAddonsResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "GitHubリポジトリURLを受け取り、owner/repoを抽出してReleasesを取得し、各バージョンのBPパックからproperties.jsを抽出して保存する",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "アドオンの登録・同期",
+                "parameters": [
+                    {
+                        "description": "登録するリポジトリのURL",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.registerAddonRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/addon.SyncResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/addons/{id}/refresh": {
+            "post": {
+                "description": "既に登録済みのアドオンについて、GitHub Releasesを再取得して最新状態に同期する",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "アドオンの再同期",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "addon id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/addon.SyncResult"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/api.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "APIサーバーの生存確認用エンドポイント",
@@ -56,6 +266,106 @@
         }
     },
     "definitions": {
+        "addon.AddonWithVersions": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "github_owner": {
+                    "type": "string"
+                },
+                "github_repo": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "versions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/addon.Version"
+                    }
+                }
+            }
+        },
+        "addon.SyncResult": {
+            "type": "object",
+            "properties": {
+                "addon": {
+                    "$ref": "#/definitions/addon.AddonWithVersions"
+                },
+                "version_errors": {
+                    "type": "integer"
+                },
+                "versions_synced": {
+                    "type": "integer"
+                }
+            }
+        },
+        "addon.Version": {
+            "type": "object",
+            "properties": {
+                "addon_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "github_release_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "object"
+                },
+                "properties_error": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "tag_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "zip_asset_name": {
+                    "type": "string"
+                },
+                "zip_asset_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.addonVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "versions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/addon.Version"
+                    }
+                }
+            }
+        },
+        "api.adminAddonsResponse": {
+            "type": "object",
+            "properties": {
+                "addons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/addon.AddonWithVersions"
+                    }
+                }
+            }
+        },
         "api.dbHealthResponse": {
             "type": "object",
             "properties": {
@@ -67,10 +377,37 @@
                 }
             }
         },
+        "api.errorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
         "api.healthResponse": {
             "type": "object",
             "properties": {
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.publicAddonsResponse": {
+            "type": "object",
+            "properties": {
+                "addons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/addon.AddonWithVersions"
+                    }
+                }
+            }
+        },
+        "api.registerAddonRequest": {
+            "type": "object",
+            "properties": {
+                "url": {
                     "type": "string"
                 }
             }

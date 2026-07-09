@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS addon_versions;
+DROP TABLE IF EXISTS addons;

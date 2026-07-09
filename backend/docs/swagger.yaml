@@ -1,5 +1,70 @@
 basePath: /api
 definitions:
+  addon.AddonWithVersions:
+    properties:
+      created_at:
+        type: string
+      github_owner:
+        type: string
+      github_repo:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+      versions:
+        items:
+          $ref: '#/definitions/addon.Version'
+        type: array
+    type: object
+  addon.SyncResult:
+    properties:
+      addon:
+        $ref: '#/definitions/addon.AddonWithVersions'
+      version_errors:
+        type: integer
+      versions_synced:
+        type: integer
+    type: object
+  addon.Version:
+    properties:
+      addon_id:
+        type: string
+      created_at:
+        type: string
+      github_release_id:
+        type: integer
+      id:
+        type: string
+      properties:
+        type: object
+      properties_error:
+        type: string
+      published_at:
+        type: string
+      tag_name:
+        type: string
+      updated_at:
+        type: string
+      zip_asset_name:
+        type: string
+      zip_asset_url:
+        type: string
+    type: object
+  api.addonVersionsResponse:
+    properties:
+      versions:
+        items:
+          $ref: '#/definitions/addon.Version'
+        type: array
+    type: object
+  api.adminAddonsResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/addon.AddonWithVersions'
+        type: array
+    type: object
   api.dbHealthResponse:
     properties:
       database:
@@ -7,9 +72,26 @@ definitions:
       status:
         type: string
     type: object
+  api.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
   api.healthResponse:
     properties:
       status:
+        type: string
+    type: object
+  api.publicAddonsResponse:
+    properties:
+      addons:
+        items:
+          $ref: '#/definitions/addon.AddonWithVersions'
+        type: array
+    type: object
+  api.registerAddonRequest:
+    properties:
+      url:
         type: string
     type: object
 info:
@@ -18,6 +100,145 @@ info:
   title: Werewolf Server API
   version: "1.0"
 paths:
+  /addons:
+    get:
+      description: 登録済みの全アドオンとそのバージョンを返す(bds-launcher等の公開API)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.publicAddonsResponse'
+      summary: アドオン一覧
+      tags:
+      - addons
+  /addons/{owner}/{repo}/versions:
+    get:
+      description: 指定したowner/repoのアドオンについて、既知の全バージョンとproperties.jsから抽出したメタ情報を返す
+      parameters:
+      - description: GitHub owner
+        in: path
+        name: owner
+        required: true
+        type: string
+      - description: GitHub repo
+        in: path
+        name: repo
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.addonVersionsResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+      summary: アドオンのバージョン一覧
+      tags:
+      - addons
+  /addons/{owner}/{repo}/versions/{tag}/download:
+    get:
+      description: 指定バージョンのGitHubリリースアセット(.zip)へリダイレクトする。実ファイルはGitHub上のものをそのまま使う
+      parameters:
+      - description: GitHub owner
+        in: path
+        name: owner
+        required: true
+        type: string
+      - description: GitHub repo
+        in: path
+        name: repo
+        required: true
+        type: string
+      - description: release tag
+        in: path
+        name: tag
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+      summary: アドオンバージョンのダウンロード
+      tags:
+      - addons
+  /admin/addons:
+    get:
+      description: 登録済みの全アドオンとそのバージョンを返す
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.adminAddonsResponse'
+      summary: 登録済みアドオン一覧(管理用)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: GitHubリポジトリURLを受け取り、owner/repoを抽出してReleasesを取得し、各バージョンのBPパックからproperties.jsを抽出して保存する
+      parameters:
+      - description: 登録するリポジトリのURL
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.registerAddonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/addon.SyncResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+      summary: アドオンの登録・同期
+      tags:
+      - admin
+  /admin/addons/{id}/refresh:
+    post:
+      description: 既に登録済みのアドオンについて、GitHub Releasesを再取得して最新状態に同期する
+      parameters:
+      - description: addon id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/addon.SyncResult'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/api.errorResponse'
+      summary: アドオンの再同期
+      tags:
+      - admin
   /health:
     get:
       description: APIサーバーの生存確認用エンドポイント

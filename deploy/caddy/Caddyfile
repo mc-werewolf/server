@@ -21,6 +21,14 @@ mc-werewolf.com {
 		reverse_proxy prod-frontend:3000
 	}
 
+	handle /api/admin/* {
+		basic_auth {
+			{$BASIC_AUTH_ADMIN_USER} {$BASIC_AUTH_ADMIN_HASH}
+		}
+
+		reverse_proxy prod-backend:8000
+	}
+
 	handle /api/* {
 		reverse_proxy prod-backend:8000
 	}
