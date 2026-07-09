@@ -40,7 +40,7 @@
 
 ワークフロー: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
 
-`build-and-push` / `deploy` / Caddy関連の配置は、いずれも [`kairo-js/github-workflows`](https://github.com/kairo-js/github-workflows) 側の再利用可能ワークフロー(`docker-build-push.yml` / `app-deploy.yml` / `caddy-snippet-deploy.yml`)に切り出されている。kairo-server / blog-app など、同一(または別)ホストに載る他サービスも同じワークフローを呼び出す想定で、werewolf-server 側の `deploy.yml` は各サービス固有の値(`app-name` / `image-prefix` / DB名 / Caddy snippetテンプレート)を渡すだけの薄いラッパーになっている。
+`build-and-push` / prodデプロイ前backup / app deploy / Caddy deploy の一連の流れは、[`kairo-js/github-workflows`](https://github.com/kairo-js/github-workflows) 側の再利用可能ワークフロー(`web-app-release.yml`)に切り出されている。内部では `docker-build-push.yml` / `postgres-backup.yml` / `app-deploy.yml` / `caddy-snippet-deploy.yml` を組み合わせている。kairo-server / blog-app など、同一(または別)ホストに載る他サービスも同じワークフローを呼び出す想定で、werewolf-server 側の `deploy.yml` は各サービス固有の値(`app-name` / `image-prefix` / DB名 / Caddy snippetテンプレート)を渡すだけの薄いラッパーになっている。
 
 **Caddy本体を管理する別リポジトリは存在しない。** `caddy-snippet-deploy.yml` が完全に自己完結しており、共有Caddy(TLS終端・80/443待受、コンテナ名 `proxy-caddy`)のcompose定義をワークフロー内に直接持っていて、呼ばれるたびに「本体が存在し最新であることを保証」→「自分のsnippetを配置してreload」を行う。werewolf-server が持つのは自分のルーティング設定(`deploy/caddy/service.caddy`)だけ。詳細は後述「リバースプロキシ (Caddy)」を参照。
 
