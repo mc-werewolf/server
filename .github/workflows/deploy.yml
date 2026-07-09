@@ -9,11 +9,11 @@ permissions:
   contents: read
 
 jobs:
-  build-and-push:
+  vars:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-
       - name: Determine image tag
         id: vars
         run: |
@@ -23,37 +23,23 @@ jobs:
             echo "tag=dev" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push backend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mc-werewolf-backend:${{ steps.vars.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mc-werewolf-frontend:${{ steps.vars.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  build-and-push:
+    needs: vars
+    uses: kairo-js/github-workflows/.github/workflows/docker-build-push.yml@main
+    with:
+      services: '[{"name":"backend","context":"./backend"},{"name":"frontend","context":"./frontend"}]'
+      image-prefix: mc-werewolf
+      tag: ${{ needs.vars.outputs.tag }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   deploy:
-    needs: build-and-push
+    needs: [vars, build-and-push]
     runs-on: ubuntu-latest
     env:
       DEPLOY_ENV_NAME: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
-      IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+      IMAGE_TAG: ${{ needs.vars.outputs.tag }}
       APP_ENV: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
       BACKEND_PORT: ${{ github.ref_type == 'tag' && '8000' || '8080' }}
       FRONTEND_PORT: ${{ github.ref_type == 'tag' && '3000' || '3001' }}
