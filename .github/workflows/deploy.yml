@@ -59,16 +59,16 @@ jobs:
       RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
       GDRIVE_DESTINATION: ${{ secrets.GDRIVE_DESTINATION }}
 
-  deploy:
-    needs: [vars, build-and-push, pre-prod-backup]
-    if: ${{ always() && needs.build-and-push.result == 'success' && (needs.vars.outputs.deploy-env-name != 'prod' || needs.pre-prod-backup.result == 'success') }}
+  deploy-dev:
+    needs: [vars, build-and-push]
+    if: ${{ needs.vars.outputs.deploy-env-name == 'dev' }}
     uses: kairo-js/github-workflows/.github/workflows/app-deploy.yml@main
     with:
       app-name: werewolf
       image-prefix: mc-werewolf
-      deploy-env-name: ${{ needs.vars.outputs.deploy-env-name }}
+      deploy-env-name: dev
       image-tag: ${{ needs.vars.outputs.tag }}
-      app-env: ${{ needs.vars.outputs.deploy-env-name }}
+      app-env: dev
       postgres-user: werewolf
       postgres-db: werewolf
     secrets:
@@ -76,10 +76,47 @@ jobs:
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      POSTGRES_PASSWORD: ${{ needs.vars.outputs.deploy-env-name == 'prod' && secrets.PROD_POSTGRES_PASSWORD || secrets.DEV_POSTGRES_PASSWORD }}
+      POSTGRES_PASSWORD: ${{ secrets.DEV_POSTGRES_PASSWORD }}
 
-  deploy-caddy:
-    needs: deploy
+  deploy-prod:
+    needs: [vars, build-and-push, pre-prod-backup]
+    if: ${{ needs.vars.outputs.deploy-env-name == 'prod' && needs.pre-prod-backup.result == 'success' }}
+    uses: kairo-js/github-workflows/.github/workflows/app-deploy.yml@main
+    with:
+      app-name: werewolf
+      image-prefix: mc-werewolf
+      deploy-env-name: prod
+      image-tag: ${{ needs.vars.outputs.tag }}
+      app-env: prod
+      postgres-user: werewolf
+      postgres-db: werewolf
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+
+  deploy-caddy-dev:
+    needs: deploy-dev
+    if: ${{ needs.deploy-dev.result == 'success' }}
+    uses: kairo-js/github-workflows/.github/workflows/caddy-snippet-deploy.yml@main
+    with:
+      app-name: werewolf
+      snippet-template-path: deploy/caddy/service.caddy
+      acme-email: ${{ vars.ACME_EMAIL }}
+    secrets:
+      PROXY_HOST: ${{ secrets.PROXY_HOST }}
+      PROXY_USER: ${{ secrets.PROXY_USER }}
+      PROXY_SSH_KEY: ${{ secrets.PROXY_SSH_KEY }}
+      BASIC_AUTH_DEV_USER: ${{ secrets.BASIC_AUTH_DEV_USER }}
+      BASIC_AUTH_DEV_HASH: ${{ secrets.BASIC_AUTH_DEV_HASH }}
+      BASIC_AUTH_ADMIN_USER: ${{ secrets.BASIC_AUTH_ADMIN_USER }}
+      BASIC_AUTH_ADMIN_HASH: ${{ secrets.BASIC_AUTH_ADMIN_HASH }}
+
+  deploy-caddy-prod:
+    needs: deploy-prod
+    if: ${{ needs.deploy-prod.result == 'success' }}
     uses: kairo-js/github-workflows/.github/workflows/caddy-snippet-deploy.yml@main
     with:
       app-name: werewolf
