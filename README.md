@@ -15,7 +15,7 @@ make up
 
 ### 自動バックアップ
 
-[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc`(圧縮済み)でダンプし、以下2箇所へアップロードする。毎日の dump は Google Drive の prod 保存先配下の `daily/` に保存する。手動実行(`workflow_dispatch`)では dev/prod を選択でき、各環境の `manual/` に保存する。tag push による prod デプロイ前にも、prod 保存先の `versions/` へ `werewolf-prod-before-<tag>-*` として自動バックアップする。
+[`.github/workflows/backup.yml`](.github/workflows/backup.yml) が毎日 (19:00 UTC / 04:00 JST) prod環境のPostgreSQLを `pg_dump -Fc`(圧縮済み)でダンプし、以下2箇所へアップロードする。毎日の dump は Google Drive の prod 保存先配下の `daily/` に保存し、30日を超えた `.dump` は削除する。手動実行(`workflow_dispatch`)では dev/prod を選択でき、各環境の `manual/` に保存する。tag push による prod デプロイ前にも、prod 保存先の `versions/` へ `werewolf-prod-before-<tag>-*` として自動バックアップする。
 
 1. **GitHub Actions artifact**(保持期間30日、過ぎると自動削除)
 2. **Google Drive**(OAuthで認可した個人アカウントの `マイドライブ/<PROD_GDRIVE_DESTINATION>/daily/`、`manual/`、`versions/`、または `マイドライブ/<DEV_GDRIVE_DESTINATION>/manual/` へアップロード。フォルダIDではなく rclone のパス指定を使う)

@@ -24,7 +24,7 @@ concurrency:
 jobs:
   backup-prod:
     if: ${{ github.event_name == 'schedule' || inputs.deploy-env-name == 'prod' }}
-    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.5
+    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.6
     with:
       app-name: werewolf
       deploy-env-name: prod
@@ -32,6 +32,7 @@ jobs:
       db-name: werewolf
       backup-prefix: werewolf-prod
       gdrive-destination-suffix: ${{ github.event_name == 'schedule' && 'daily' || 'manual' }}
+      gdrive-retention-days: ${{ github.event_name == 'schedule' && 30 || 0 }}
     secrets:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -41,7 +42,7 @@ jobs:
 
   backup-dev:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy-env-name == 'dev' }}
-    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.5
+    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.6
     with:
       app-name: werewolf
       deploy-env-name: dev
