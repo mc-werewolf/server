@@ -57,3 +57,5 @@ GitHub Actions の `Undeploy` workflow を手動実行する。`target=all` は 
 ### Appサーバー切り出し準備
 
 Caddy upstream は `DEV_BACKEND_UPSTREAM` / `DEV_FRONTEND_UPSTREAM` / `PROD_BACKEND_UPSTREAM` / `PROD_FRONTEND_UPSTREAM` の Repository Variables で上書きできる。未設定なら従来通り `werewolf-dev-backend:8000` など同一Docker network上のcontainer名を使う。werewolf appだけ別サーバーへ移す場合は、`*_PORT` でappホスト側の公開portを設定し、対象の upstream をCaddyから見た `<新appサーバーのIPまたはDNS名>:<port>` に設定する。
+
+`Prepare Next App Host` workflow は `NEXT_DEPLOY_HOST` / `NEXT_DEPLOY_USER` / `NEXT_DEPLOY_SSH_KEY` を使って新appサーバーへdeployし、必要なら現在の `DEPLOY_HOST` からDB dumpを取得して復元する。成功後に GitHub UI で `DEPLOY_*` と `*_UPSTREAM` / `*_PORT` Variables を切り替える。
