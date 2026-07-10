@@ -41,7 +41,7 @@ concurrency:
 
 jobs:
   undeploy:
-    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.1.10
+    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.1.13
     with:
       app-name: werewolf
       deploy-env-names: ${{ inputs.target == 'all' && 'dev prod' || inputs.target }}

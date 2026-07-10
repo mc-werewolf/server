@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   prepare-next:
-    uses: kairo-js/github-workflows/.github/workflows/app-prepare-next-host.yml@v0.1.12
+    uses: kairo-js/github-workflows/.github/workflows/app-prepare-next-host.yml@v0.1.13
     with:
       app-name: werewolf
       image-prefix: mc-werewolf
