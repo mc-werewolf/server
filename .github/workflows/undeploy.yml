@@ -40,19 +40,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  undeploy:
-    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.1.14
+  undeploy-dev:
+    if: ${{ inputs.target == 'all' || inputs.target == 'dev' }}
+    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.2.1
     with:
       app-name: werewolf
-      deploy-env-names: ${{ inputs.target == 'all' && 'dev prod' || inputs.target }}
+      deploy-env-names: dev
+      remove-volumes: ${{ inputs.remove-volumes }}
+      remove-app-dirs: ${{ inputs.remove-app-dirs }}
+      remove-caddy-snippet: false
+      confirm: ${{ inputs.confirm }}
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEV_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEV_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
+      PROXY_HOST: ${{ secrets.PROXY_HOST }}
+      PROXY_USER: ${{ secrets.PROXY_USER }}
+      PROXY_SSH_KEY: ${{ secrets.PROXY_SSH_KEY }}
+
+  undeploy-prod:
+    if: ${{ inputs.target == 'all' || inputs.target == 'prod' }}
+    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.2.1
+    with:
+      app-name: werewolf
+      deploy-env-names: prod
       remove-volumes: ${{ inputs.remove-volumes }}
       remove-app-dirs: ${{ inputs.remove-app-dirs }}
       remove-caddy-snippet: ${{ inputs.target == 'all' && inputs.remove-caddy-snippet || false }}
       confirm: ${{ inputs.confirm }}
     secrets:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
       PROXY_HOST: ${{ secrets.PROXY_HOST }}
       PROXY_USER: ${{ secrets.PROXY_USER }}
       PROXY_SSH_KEY: ${{ secrets.PROXY_SSH_KEY }}

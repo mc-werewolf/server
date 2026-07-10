@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   prepare-next:
-    uses: kairo-js/github-workflows/.github/workflows/app-prepare-next-host.yml@v0.1.14
+    uses: kairo-js/github-workflows/.github/workflows/app-prepare-next-host.yml@v0.2.1
     with:
       app-name: werewolf
       image-prefix: mc-werewolf
@@ -48,9 +48,9 @@ jobs:
       backend-port: ${{ inputs.deploy-env-name == 'prod' && vars.NEXT_PROD_BACKEND_PORT || vars.NEXT_DEV_BACKEND_PORT }}
       frontend-port: ${{ inputs.deploy-env-name == 'prod' && vars.NEXT_PROD_FRONTEND_PORT || vars.NEXT_DEV_FRONTEND_PORT }}
     secrets:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_HOST: ${{ inputs.deploy-env-name == 'prod' && secrets.PROD_DEPLOY_HOST || secrets.DEV_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ inputs.deploy-env-name == 'prod' && secrets.PROD_DEPLOY_USER || secrets.DEV_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ inputs.deploy-env-name == 'prod' && secrets.PROD_DEPLOY_SSH_KEY || secrets.DEV_DEPLOY_SSH_KEY }}
       NEXT_DEPLOY_HOST: ${{ secrets.NEXT_DEPLOY_HOST }}
       NEXT_DEPLOY_USER: ${{ secrets.NEXT_DEPLOY_USER }}
       NEXT_DEPLOY_SSH_KEY: ${{ secrets.NEXT_DEPLOY_SSH_KEY }}
