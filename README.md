@@ -49,3 +49,7 @@ ssh <DEPLOY_USER>@<DEPLOY_HOST> "cd /opt/werewolf/prod && docker compose -p were
 4. 復元後、`https://mc-werewolf.com/api/health/db` などで疎通を確認する
 
 **注意**: 本番環境に対して復元コマンドを実行すると、既存データが上書きされる。実行前に必ず現在のデータもバックアップしておくこと。
+
+### サーバーからの撤退
+
+GitHub Actions の `Undeploy` workflow を手動実行する。`target=all` は Caddy snippet を削除して dev/prod の stack を停止する。`target=dev` / `target=prod` は該当 stack のみ停止し、Caddy snippet は残す。`remove-volumes=true` は PostgreSQL volume も削除するため、移行完了後など明確に不要な場合だけ使う。

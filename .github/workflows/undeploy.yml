@@ -1,0 +1,58 @@
+name: Undeploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which deployment environment to remove from the server.
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - dev
+          - prod
+      remove-volumes:
+        description: Delete Docker volumes too. This deletes PostgreSQL data.
+        required: true
+        type: boolean
+        default: false
+      remove-app-dirs:
+        description: Delete /opt/werewolf/<env> directories after compose down.
+        required: true
+        type: boolean
+        default: true
+      remove-caddy-snippet:
+        description: Remove werewolf.caddy. Only applies when target is all.
+        required: true
+        type: boolean
+        default: true
+      confirm:
+        description: Type exactly "undeploy werewolf".
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: werewolf-undeploy
+  cancel-in-progress: false
+
+jobs:
+  undeploy:
+    uses: kairo-js/github-workflows/.github/workflows/app-undeploy.yml@v0.1.9
+    with:
+      app-name: werewolf
+      deploy-env-names: ${{ inputs.target == 'all' && 'dev prod' || inputs.target }}
+      remove-volumes: ${{ inputs.remove-volumes }}
+      remove-app-dirs: ${{ inputs.remove-app-dirs }}
+      remove-caddy-snippet: ${{ inputs.target == 'all' && inputs.remove-caddy-snippet || false }}
+      confirm: ${{ inputs.confirm }}
+    secrets:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      PROXY_HOST: ${{ secrets.PROXY_HOST }}
+      PROXY_USER: ${{ secrets.PROXY_USER }}
+      PROXY_SSH_KEY: ${{ secrets.PROXY_SSH_KEY }}
