@@ -53,3 +53,7 @@ ssh <DEPLOY_USER>@<DEPLOY_HOST> "cd /opt/werewolf/prod && docker compose -p were
 ### サーバーからの撤退
 
 GitHub Actions の `Undeploy` workflow を手動実行する。`target=all` は Caddy snippet を削除して dev/prod の stack を停止する。`target=dev` / `target=prod` は該当 stack のみ停止し、Caddy snippet は残す。`remove-volumes=true` は PostgreSQL volume も削除するため、移行完了後など明確に不要な場合だけ使う。
+
+### Appサーバー切り出し準備
+
+Caddy upstream は `DEV_BACKEND_UPSTREAM` / `DEV_FRONTEND_UPSTREAM` / `PROD_BACKEND_UPSTREAM` / `PROD_FRONTEND_UPSTREAM` の Repository Variables で上書きできる。未設定なら従来通り `werewolf-dev-backend:8000` など同一Docker network上のcontainer名を使う。werewolf appだけ別サーバーへ移す場合は、`*_PORT` でappホスト側の公開portを設定し、対象の upstream をCaddyから見た `<新appサーバーのIPまたはDNS名>:<port>` に設定する。

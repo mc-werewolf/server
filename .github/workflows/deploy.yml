@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    uses: kairo-js/github-workflows/.github/workflows/web-app-release.yml@v0.1.9
+    uses: kairo-js/github-workflows/.github/workflows/web-app-release.yml@v0.1.10
     with:
       app-name: werewolf
       image-prefix: mc-werewolf
@@ -24,6 +24,14 @@ jobs:
       caddy-snippet-template-path: deploy/caddy/service.caddy
       acme-email: ${{ vars.ACME_EMAIL }}
       prod-backup-prefix: werewolf-prod-before-${{ github.ref_name }}
+      dev-backend-upstream: ${{ vars.DEV_BACKEND_UPSTREAM }}
+      dev-frontend-upstream: ${{ vars.DEV_FRONTEND_UPSTREAM }}
+      prod-backend-upstream: ${{ vars.PROD_BACKEND_UPSTREAM }}
+      prod-frontend-upstream: ${{ vars.PROD_FRONTEND_UPSTREAM }}
+      dev-backend-port: ${{ vars.DEV_BACKEND_PORT }}
+      dev-frontend-port: ${{ vars.DEV_FRONTEND_PORT }}
+      prod-backend-port: ${{ vars.PROD_BACKEND_PORT }}
+      prod-frontend-port: ${{ vars.PROD_FRONTEND_PORT }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
