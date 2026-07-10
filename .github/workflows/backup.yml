@@ -24,7 +24,7 @@ concurrency:
 jobs:
   backup-prod:
     if: ${{ github.event_name == 'schedule' || inputs.deploy-env-name == 'prod' }}
-    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.6
+    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.7
     with:
       app-name: werewolf
       deploy-env-name: prod
@@ -42,7 +42,7 @@ jobs:
 
   backup-dev:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy-env-name == 'dev' }}
-    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.6
+    uses: kairo-js/github-workflows/.github/workflows/postgres-backup.yml@v0.1.7
     with:
       app-name: werewolf
       deploy-env-name: dev
