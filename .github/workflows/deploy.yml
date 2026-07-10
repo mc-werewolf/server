@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    uses: kairo-js/github-workflows/.github/workflows/web-app-release.yml@v0.2.1
+    uses: kairo-js/github-workflows/.github/workflows/web-app-release.yml@v0.2.2
     with:
       app-name: werewolf
       image-prefix: mc-werewolf
