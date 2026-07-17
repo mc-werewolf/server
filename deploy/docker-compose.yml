@@ -43,7 +43,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/${IMAGE_PREFIX}-frontend:${IMAGE_TAG}
     container_name: ${APP_NAME}-${DEPLOY_ENV_NAME}-frontend
     environment:
-      BACKEND_URL: http://backend:8000
+      BACKEND_URL: http://${APP_NAME}-${DEPLOY_ENV_NAME}-backend:8000
     networks:
       - default
       - proxy
