@@ -12,7 +12,7 @@ import (
 
 // NewRouter builds the /api router.
 // Swagger UI is only mounted when devMode is true (dev.mc-werewolf.com only).
-func NewRouter(devMode bool, pool *pgxpool.Pool) http.Handler {
+func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", HealthHandler)
@@ -32,6 +32,7 @@ func NewRouter(devMode bool, pool *pgxpool.Pool) http.Handler {
 	mux.HandleFunc("GET /api/addons", ListAddonsHandler(store))
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions", ListAddonVersionsHandler(store))
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions/{tag}/download", DownloadAddonVersionHandler(store))
+	mux.HandleFunc("GET /api/launcher/v1/config", LauncherConfigHandler(launcherConfig))
 
 	if devMode {
 		mux.Handle("/api/swagger/", httpSwagger.WrapHandler)

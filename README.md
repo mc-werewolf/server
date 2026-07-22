@@ -11,6 +11,8 @@ make up
 - backend: http://localhost:8000 (`/api/health`, `/api/health/db`, dev環境では `/api/swagger/index.html`)
 - frontend: http://localhost:3000
 
+ランチャー向け構成は `GET http://localhost:8000/api/launcher/v1/config` から取得できます。Kairo RegistryのURLと対象アドオンは`KAIRO_REGISTRY_URL`、`LAUNCHER_ADDON_IDS`で変更できます。
+
 ## バックアップ・復元
 
 ### 自動バックアップ

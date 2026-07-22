@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	_ "github.com/mc-werewolf/server/backend/docs"
 	"github.com/mc-werewolf/server/backend/internal/api"
@@ -44,7 +45,9 @@ func main() {
 	}
 	defer pool.Close()
 
-	router := api.NewRouter(devMode, pool)
+	registryURL := getEnv("KAIRO_REGISTRY_URL", "https://kairojs.com")
+	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database,game-manager,vanillapack,additional-roles-1"), ",")
+	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs))
 
 	log.Printf("starting server on :%s (devMode=%v)", port, devMode)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
