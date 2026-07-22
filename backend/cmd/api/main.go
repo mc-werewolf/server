@@ -46,7 +46,7 @@ func main() {
 	defer pool.Close()
 
 	registryURL := getEnv("KAIRO_REGISTRY_URL", "https://kairojs.com")
-	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database,game-manager,vanillapack,additional-roles-1"), ",")
+	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database"), ",")
 	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs))
 
 	log.Printf("starting server on :%s (devMode=%v)", port, devMode)
