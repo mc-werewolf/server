@@ -17,6 +17,7 @@ import (
 	"github.com/mc-werewolf/server/backend/internal/api"
 	"github.com/mc-werewolf/server/backend/internal/db"
 	"github.com/mc-werewolf/server/backend/internal/migrate"
+	"github.com/mc-werewolf/server/backend/internal/relay"
 )
 
 func main() {
@@ -47,7 +48,9 @@ func main() {
 
 	registryURL := getEnv("KAIRO_REGISTRY_URL", "https://kairojs.com")
 	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database"), ",")
-	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs))
+	relayManager := relay.NewManager(20000, 20099)
+	relayPublicHost := getEnv("RELAY_PUBLIC_HOST", "mc-werewolf.com")
+	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs), relayManager, relayPublicHost)
 
 	log.Printf("starting server on :%s (devMode=%v)", port, devMode)
 	if err := http.ListenAndServe(":"+port, router); err != nil {

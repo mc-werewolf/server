@@ -112,6 +112,35 @@ func (s *Store) Stop(ctx context.Context, id, token string) error {
 	return err
 }
 
+func (s *Store) Authenticate(ctx context.Context, id, token string) error {
+	hash := sha256.Sum256([]byte(token))
+	var exists bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM game_servers
+			WHERE id = $1 AND token_hash = $2 AND lease_expires_at > now() AND status <> 'stopping'
+		)
+	`, id, hash[:]).Scan(&exists)
+	if err == nil && !exists {
+		return ErrNotFound
+	}
+	return err
+}
+
+func (s *Store) SetRelay(ctx context.Context, id, token, host string, port int) error {
+	hash := sha256.Sum256([]byte(token))
+	result, err := s.pool.Exec(ctx, `
+		UPDATE game_servers SET host_name = $3, host_port = $4,
+			connection_mode = 'relay', status = 'online',
+			lease_expires_at = $5, updated_at = now()
+		WHERE id = $1 AND token_hash = $2 AND status <> 'stopping'
+	`, id, hash[:], host, port, time.Now().UTC().Add(LeaseDuration))
+	if err == nil && result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return err
+}
+
 func (s *Store) ListActive(ctx context.Context) ([]Server, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, display_name, world_name, host_name, host_port,

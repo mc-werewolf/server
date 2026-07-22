@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/dop251/goja v0.0.0-20260701091749-b07b74453ea9 // indirect

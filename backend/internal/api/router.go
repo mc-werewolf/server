@@ -9,11 +9,12 @@ import (
 	"github.com/mc-werewolf/server/backend/internal/addon"
 	"github.com/mc-werewolf/server/backend/internal/github"
 	gameNetwork "github.com/mc-werewolf/server/backend/internal/network"
+	"github.com/mc-werewolf/server/backend/internal/relay"
 )
 
 // NewRouter builds the /api router.
 // Swagger UI is only mounted when devMode is true (dev.mc-werewolf.com only).
-func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig) http.Handler {
+func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig, relayManager *relay.Manager, relayPublicHost string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", HealthHandler)
@@ -39,6 +40,7 @@ func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig) 
 	mux.HandleFunc("GET /api/network/v1/servers", ListNetworkServersHandler(networkStore))
 	mux.HandleFunc("PUT /api/network/v1/servers/{id}/heartbeat", HeartbeatNetworkServerHandler(networkStore))
 	mux.HandleFunc("DELETE /api/network/v1/servers/{id}", StopNetworkServerHandler(networkStore))
+	mux.HandleFunc("GET /api/network/v1/servers/{id}/relay", RelayNetworkServerHandler(networkStore, relayManager, relayPublicHost))
 
 	if devMode {
 		mux.Handle("/api/swagger/", httpSwagger.WrapHandler)

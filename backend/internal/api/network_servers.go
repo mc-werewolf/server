@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	gameNetwork "github.com/mc-werewolf/server/backend/internal/network"
+	"github.com/mc-werewolf/server/backend/internal/relay"
 )
 
 type networkServerStore interface {
@@ -16,6 +17,31 @@ type networkServerStore interface {
 	Heartbeat(context.Context, string, string, gameNetwork.HeartbeatInput) (gameNetwork.Server, error)
 	Stop(context.Context, string, string) error
 	ListActive(context.Context) ([]gameNetwork.Server, error)
+	Authenticate(context.Context, string, string) error
+	SetRelay(context.Context, string, string, string, int) error
+}
+
+func RelayNetworkServerHandler(store networkServerStore, manager *relay.Manager, publicHost string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, ok := bearerToken(r)
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "bearer token is required")
+			return
+		}
+		serverID := r.PathValue("id")
+		if err := store.Authenticate(r.Context(), serverID, token); err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid or expired game server token")
+			return
+		}
+		err := manager.Serve(serverID, w, r, func(port int) error {
+			return store.SetRelay(r.Context(), serverID, token, publicHost, port)
+		})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			// The connection may already have been upgraded, in which case the
+			// WebSocket close is the only valid way to report the error.
+			return
+		}
+	}
 }
 
 type registerServerRequest struct {

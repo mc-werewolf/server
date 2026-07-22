@@ -28,8 +28,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-werewolf}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-werewolf}
       POSTGRES_DB: ${POSTGRES_DB:-werewolf}
+      RELAY_PUBLIC_HOST: ${RELAY_PUBLIC_HOST:-127.0.0.1}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+      - "20000-20099:20000-20099/udp"
     depends_on:
       postgres:
         condition: service_healthy
