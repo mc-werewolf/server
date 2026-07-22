@@ -1,4 +1,11 @@
 services:
+  world-storage-init:
+    image: alpine:3.19
+    command: ["sh", "-c", "mkdir -p /data && chown -R 10001:10001 /data"]
+    volumes:
+      - world_data:/data
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -40,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      world-storage-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8000/api/health"]
       interval: 5s
