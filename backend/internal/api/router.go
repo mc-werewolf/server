@@ -8,6 +8,7 @@ import (
 
 	"github.com/mc-werewolf/server/backend/internal/addon"
 	"github.com/mc-werewolf/server/backend/internal/github"
+	gameNetwork "github.com/mc-werewolf/server/backend/internal/network"
 )
 
 // NewRouter builds the /api router.
@@ -19,6 +20,7 @@ func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig) 
 	mux.HandleFunc("GET /api/health/db", DBHealthHandler(pool))
 
 	store := addon.NewStore(pool)
+	networkStore := gameNetwork.NewStore(pool)
 	ghClient := github.NewClient()
 
 	// Admin (mutating) routes. Not gated at the Go level: perimeter auth is
@@ -33,6 +35,10 @@ func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig) 
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions", ListAddonVersionsHandler(store))
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions/{tag}/download", DownloadAddonVersionHandler(store))
 	mux.HandleFunc("GET /api/launcher/v1/config", LauncherConfigHandler(launcherConfig))
+	mux.HandleFunc("POST /api/network/v1/servers", RegisterNetworkServerHandler(networkStore))
+	mux.HandleFunc("GET /api/network/v1/servers", ListNetworkServersHandler(networkStore))
+	mux.HandleFunc("PUT /api/network/v1/servers/{id}/heartbeat", HeartbeatNetworkServerHandler(networkStore))
+	mux.HandleFunc("DELETE /api/network/v1/servers/{id}", StopNetworkServerHandler(networkStore))
 
 	if devMode {
 		mux.Handle("/api/swagger/", httpSwagger.WrapHandler)
