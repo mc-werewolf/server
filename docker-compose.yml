@@ -29,6 +29,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-werewolf}
       POSTGRES_DB: ${POSTGRES_DB:-werewolf}
       RELAY_PUBLIC_HOST: ${RELAY_PUBLIC_HOST:-127.0.0.1}
+      KAIRO_REGISTRY_URL: ${KAIRO_REGISTRY_URL:-https://kairojs.com}
+      LAUNCHER_ADDON_IDS: ${LAUNCHER_ADDON_IDS:-kairo,kairo-database}
+      WORLD_STORAGE_DIR: /var/lib/werewolf/worlds
+    volumes:
+      - world_data:/var/lib/werewolf/worlds
     ports:
       - "${BACKEND_PORT:-8000}:8000"
       - "20000-20099:20000-20099/udp"
@@ -61,3 +66,4 @@ services:
 
 volumes:
   postgres_data:
+  world_data:

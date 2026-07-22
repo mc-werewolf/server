@@ -50,7 +50,8 @@ func main() {
 	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database"), ",")
 	relayManager := relay.NewManager(20000, 20099)
 	relayPublicHost := getEnv("RELAY_PUBLIC_HOST", "167.179.74.58")
-	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs), relayManager, relayPublicHost)
+	worldStorageDir := getEnv("WORLD_STORAGE_DIR", "/var/lib/werewolf/worlds")
+	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs), relayManager, relayPublicHost, worldStorageDir)
 
 	log.Printf("starting server on :%s (devMode=%v)", port, devMode)
 	if err := http.ListenAndServe(":"+port, router); err != nil {

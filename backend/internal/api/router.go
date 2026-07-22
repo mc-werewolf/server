@@ -10,11 +10,12 @@ import (
 	"github.com/mc-werewolf/server/backend/internal/github"
 	gameNetwork "github.com/mc-werewolf/server/backend/internal/network"
 	"github.com/mc-werewolf/server/backend/internal/relay"
+	worlddata "github.com/mc-werewolf/server/backend/internal/world"
 )
 
 // NewRouter builds the /api router.
 // Swagger UI is only mounted when devMode is true (dev.mc-werewolf.com only).
-func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig, relayManager *relay.Manager, relayPublicHost string) http.Handler {
+func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig, relayManager *relay.Manager, relayPublicHost, worldStorageDir string) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", HealthHandler)
@@ -22,6 +23,7 @@ func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig, 
 
 	store := addon.NewStore(pool)
 	networkStore := gameNetwork.NewStore(pool)
+	worldStore := worlddata.NewStore(pool)
 	ghClient := github.NewClient()
 
 	// Admin (mutating) routes. Not gated at the Go level: perimeter auth is
@@ -30,12 +32,16 @@ func NewRouter(devMode bool, pool *pgxpool.Pool, launcherConfig LauncherConfig, 
 	mux.HandleFunc("POST /api/admin/addons", RegisterAddonHandler(store, ghClient))
 	mux.HandleFunc("POST /api/admin/addons/{id}/refresh", RefreshAddonHandler(store, ghClient))
 	mux.HandleFunc("GET /api/admin/addons", ListAdminAddonsHandler(store))
+	mux.HandleFunc("GET /api/admin/world", CurrentWorldHandler(worldStore))
+	mux.HandleFunc("POST /api/admin/world", UploadWorldHandler(worldStore, worldStorageDir))
 
 	// Public routes, consumed by bds-launcher and the mc-werewolf.com site.
 	mux.HandleFunc("GET /api/addons", ListAddonsHandler(store))
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions", ListAddonVersionsHandler(store))
 	mux.HandleFunc("GET /api/addons/{owner}/{repo}/versions/{tag}/download", DownloadAddonVersionHandler(store))
 	mux.HandleFunc("GET /api/launcher/v1/config", LauncherConfigHandler(launcherConfig))
+	mux.HandleFunc("GET /api/world/latest", CurrentWorldHandler(worldStore))
+	mux.HandleFunc("GET /api/world/latest/download", DownloadWorldHandler(worldStore, worldStorageDir))
 	mux.HandleFunc("POST /api/network/v1/servers", RegisterNetworkServerHandler(networkStore))
 	mux.HandleFunc("GET /api/network/v1/servers", ListNetworkServersHandler(networkStore))
 	mux.HandleFunc("PUT /api/network/v1/servers/{id}/heartbeat", HeartbeatNetworkServerHandler(networkStore))

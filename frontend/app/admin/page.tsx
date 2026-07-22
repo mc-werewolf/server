@@ -6,12 +6,20 @@ export default function AdminPage() {
       <h1 className="text-3xl font-semibold text-black dark:text-zinc-50">
         Admin
       </h1>
-      <Link
-        href="/admin/addons"
-        className="rounded-lg border border-black/10 bg-white px-6 py-4 font-medium text-black hover:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-      >
-        アドオン管理
-      </Link>
+      <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <Link
+          href="/admin/world"
+          className="rounded-lg border border-black/10 bg-white px-6 py-5 font-medium text-black hover:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Werewolf ワールド管理
+        </Link>
+        <Link
+          href="/admin/addons"
+          className="rounded-lg border border-black/10 bg-white px-6 py-5 font-medium text-black hover:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+        >
+          アドオン管理
+        </Link>
+      </div>
     </div>
   );
 }
