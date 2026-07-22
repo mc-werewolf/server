@@ -49,7 +49,7 @@ func main() {
 	registryURL := getEnv("KAIRO_REGISTRY_URL", "https://kairojs.com")
 	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database"), ",")
 	relayManager := relay.NewManager(20000, 20099)
-	relayPublicHost := getEnv("RELAY_PUBLIC_HOST", "mc-werewolf.com")
+	relayPublicHost := getEnv("RELAY_PUBLIC_HOST", "167.179.74.58")
 	router := api.NewRouter(devMode, pool, api.NewLauncherConfig(registryURL, addonIDs), relayManager, relayPublicHost)
 
 	log.Printf("starting server on :%s (devMode=%v)", port, devMode)

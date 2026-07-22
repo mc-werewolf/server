@@ -33,7 +33,7 @@ func RelayNetworkServerHandler(store networkServerStore, manager *relay.Manager,
 			writeError(w, http.StatusUnauthorized, "invalid or expired game server token")
 			return
 		}
-		err := manager.Serve(serverID, w, r, func(port int) error {
+		err := manager.Serve(serverID, publicHost, w, r, func(port int) error {
 			return store.SetRelay(r.Context(), serverID, token, publicHost, port)
 		})
 		if err != nil && !errors.Is(err, context.Canceled) {

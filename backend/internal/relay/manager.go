@@ -29,7 +29,7 @@ func NewManager(firstPort, lastPort int) *Manager {
 	return &Manager{firstPort: firstPort, lastPort: lastPort, active: make(map[string]struct{})}
 }
 
-func (m *Manager) Serve(serverID string, w http.ResponseWriter, r *http.Request, ready func(int) error) error {
+func (m *Manager) Serve(serverID, publicHost string, w http.ResponseWriter, r *http.Request, ready func(int) error) error {
 	if !m.reserve(serverID) {
 		return errors.New("relay already connected")
 	}
@@ -50,7 +50,7 @@ func (m *Manager) Serve(serverID string, w http.ResponseWriter, r *http.Request,
 	connection.SetReadLimit(maxDatagramSize + 512)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	if err := wsjson.Write(ctx, connection, map[string]any{"type": "ready", "port": port}); err != nil {
+	if err := wsjson.Write(ctx, connection, map[string]any{"type": "ready", "hostName": publicHost, "port": port}); err != nil {
 		return err
 	}
 	errChannel := make(chan error, 2)
