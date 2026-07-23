@@ -47,7 +47,7 @@ func main() {
 	defer pool.Close()
 
 	registryURL := getEnv("KAIRO_REGISTRY_URL", "https://kairojs.com")
-	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database"), ",")
+	addonIDs := strings.Split(getEnv("LAUNCHER_ADDON_IDS", "kairo,kairo-database,werewolf-gamemanager,werewolf-vanillapack,werewolf-additionalroles-1,werewolf-additionalroles-4"), ",")
 	relayManager := relay.NewManager(20000, 20099)
 	relayPublicHost := getEnv("RELAY_PUBLIC_HOST", "167.179.74.58")
 	worldStorageDir := getEnv("WORLD_STORAGE_DIR", "/var/lib/werewolf/worlds")

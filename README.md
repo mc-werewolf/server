@@ -11,7 +11,7 @@ make up
 - backend: http://localhost:8000 (`/api/health`, `/api/health/db`, dev環境では `/api/swagger/index.html`)
 - frontend: http://localhost:3000
 
-ランチャー向け構成は `GET http://localhost:8000/api/launcher/v1/config` から取得できます。Kairo RegistryのURLと対象アドオンは`KAIRO_REGISTRY_URL`、`LAUNCHER_ADDON_IDS`で変更できます。初期構築ではRegistry公開済みの`kairo`と`kairo-database`を配布します。
+ランチャー向け構成は `GET http://localhost:8000/api/launcher/v1/config` から取得できます。Kairo RegistryのURLと対象アドオンは`KAIRO_REGISTRY_URL`、`LAUNCHER_ADDON_IDS`で変更できます。初期構築ではRegistry公開済みの`kairo`、`kairo-database`、`werewolf-gamemanager`、`werewolf-vanillapack`、`werewolf-additionalroles-1`、`werewolf-additionalroles-4`を配布します。
 
 ## バックアップ・復元
 

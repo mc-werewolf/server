@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-werewolf}
       POSTGRES_DB: ${POSTGRES_DB:-werewolf}
       KAIRO_REGISTRY_URL: ${KAIRO_REGISTRY_URL:-https://kairojs.com}
-      LAUNCHER_ADDON_IDS: ${LAUNCHER_ADDON_IDS:-kairo,kairo-database}
+      LAUNCHER_ADDON_IDS: ${LAUNCHER_ADDON_IDS:-kairo,kairo-database,werewolf-gamemanager,werewolf-vanillapack,werewolf-additionalroles-1,werewolf-additionalroles-4}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -37,7 +37,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-werewolf}
       RELAY_PUBLIC_HOST: ${RELAY_PUBLIC_HOST:-127.0.0.1}
       KAIRO_REGISTRY_URL: ${KAIRO_REGISTRY_URL:-https://kairojs.com}
-      LAUNCHER_ADDON_IDS: ${LAUNCHER_ADDON_IDS:-kairo,kairo-database}
+      LAUNCHER_ADDON_IDS: ${LAUNCHER_ADDON_IDS:-kairo,kairo-database,werewolf-gamemanager,werewolf-vanillapack,werewolf-additionalroles-1,werewolf-additionalroles-4}
       WORLD_STORAGE_DIR: /var/lib/werewolf/worlds
     volumes:
       - world_data:/var/lib/werewolf/worlds
